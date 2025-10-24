@@ -9,16 +9,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import org.roshan.beats.ui.components.BottomNavItem
-import org.roshan.beats.ui.components.BottomNavigationBar
-import org.roshan.beats.ui.components.MiniPlayer
-import org.roshan.beats.ui.components.QueueModal
+import kotlinx.coroutines.launch
+import org.roshan.beats.ui.components.*
 import org.roshan.beats.ui.navigation.Screen
 import org.roshan.beats.ui.screens.*
 import org.roshan.beats.ui.theme.RoshanBeatsTheme
 import org.roshan.beats.viewmodel.MusicViewModel
 import org.roshan.beats.viewmodel.PlayerViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App() {
     var isDarkTheme by remember { mutableStateOf(true) }
@@ -27,6 +26,8 @@ fun App() {
     
     RoshanBeatsTheme(darkTheme = isDarkTheme) {
         val navController = rememberNavController()
+        val drawerState = rememberDrawerState(DrawerValue.Closed)
+        val scope = rememberCoroutineScope()
         var showSplash by remember { mutableStateOf(true) }
         var showQueue by remember { mutableStateOf(false) }
         var selectedBottomNav by remember { mutableStateOf(BottomNavItem.HOME) }
@@ -43,163 +44,168 @@ fun App() {
                 onSplashComplete = { showSplash = false }
             )
         } else {
-            Scaffold(
-                bottomBar = {
-                    Column {
-                        MiniPlayer(
-                            playerViewModel = playerViewModel,
-                            onExpand = {
-                                selectedBottomNav = BottomNavItem.PLAYER
-                                navController.navigate(Screen.Player) {
-                                    popUpTo(Screen.Home) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
+            ModalNavigationDrawer(
+                drawerState = drawerState,
+                drawerContent = {
+                    AppDrawer(
+                        onMenuItemClick = { menuId ->
+                            when (menuId) {
+                                "home" -> navController.navigate(Screen.Home)
+                                "genres" -> navController.navigate(Screen.Genres)
+                                "moods" -> navController.navigate(Screen.MoodPlaylists)
+                                "radio" -> navController.navigate(Screen.Radio)
+                                "charts" -> navController.navigate(Screen.Charts)
+                                "podcasts" -> navController.navigate(Screen.Podcasts)
+                                "equalizer" -> navController.navigate(Screen.Equalizer)
+                                "sleep_timer" -> navController.navigate(Screen.SleepTimer)
+                                "visualizer" -> navController.navigate(Screen.Visualizer)
+                                "car_mode" -> navController.navigate(Screen.CarMode)
+                                "statistics" -> navController.navigate(Screen.Statistics)
+                                "year_wrapped" -> navController.navigate(Screen.YearWrapped)
+                                "history" -> navController.navigate(Screen.History)
+                                "storage" -> navController.navigate(Screen.StorageManager)
+                                "liked_songs" -> navController.navigate(Screen.LikedSongs)
+                                "library" -> navController.navigate(Screen.Library)
+                                "settings" -> navController.navigate(Screen.Settings)
                             }
-                        )
-                        BottomNavigationBar(
-                            selectedItem = selectedBottomNav,
-                            onItemSelected = { item ->
-                                selectedBottomNav = item
-                                when (item) {
-                                    BottomNavItem.HOME -> navController.navigate(Screen.Home) {
-                                        popUpTo(Screen.Home) { inclusive = true }
-                                        launchSingleTop = true
-                                    }
-                                    BottomNavItem.SEARCH -> navController.navigate(Screen.Search) {
-                                        popUpTo(Screen.Home) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                    BottomNavItem.PLAYER -> navController.navigate(Screen.Player) {
-                                        popUpTo(Screen.Home) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                    BottomNavItem.LIBRARY -> navController.navigate(Screen.Library) {
-                                        popUpTo(Screen.Home) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                    BottomNavItem.SETTINGS -> navController.navigate(Screen.Settings) {
-                                        popUpTo(Screen.Home) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                }
-                            }
-                        )
-                    }
+                        },
+                        onCloseDrawer = {
+                            scope.launch { drawerState.close() }
+                        }
+                    )
                 }
-            ) { paddingValues ->
-                NavHost(
-                    navController = navController,
-                    startDestination = Screen.Home,
-                    modifier = Modifier.padding(paddingValues)
-                ) {
-                    composable<Screen.Home> {
-                        HomeScreen(
-                            musicViewModel = musicViewModel,
-                            playerViewModel = playerViewModel,
-                            onTrackClick = { track ->
-                                musicViewModel.addToRecentlyPlayed(track)
-                                playerViewModel.playTrack(track)
+            ) {
+                Scaffold(
+                    topBar = {
+                        RoshanBeatsTopAppBar(
+                            title = "Roshan Beats",
+                            showBackButton = false,
+                            showMenuButton = true,
+                            onMenuClick = {
+                                scope.launch { drawerState.open() }
                             },
-                            onAlbumClick = { album ->
-                                navController.navigate(Screen.AlbumDetail(album.id, album.name))
-                            },
-                            onArtistClick = { artist ->
-                                navController.navigate(Screen.ArtistDetail(artist.id, artist.name))
+                            onSearchClick = {
+                                navController.navigate(Screen.Search)
                             }
                         )
+                    },
+                    bottomBar = {
+                        Column {
+                            MiniPlayer(
+                                playerViewModel = playerViewModel,
+                                onExpand = {
+                                    selectedBottomNav = BottomNavItem.PLAYER
+                                    navController.navigate(Screen.Player)
+                                }
+                            )
+                            BottomNavigationBar(
+                                selectedItem = selectedBottomNav,
+                                onItemSelected = { item ->
+                                    selectedBottomNav = item
+                                    when (item) {
+                                        BottomNavItem.HOME -> navController.navigate(Screen.Home)
+                                        BottomNavItem.SEARCH -> navController.navigate(Screen.Search)
+                                        BottomNavItem.PLAYER -> navController.navigate(Screen.Player)
+                                        BottomNavItem.LIBRARY -> navController.navigate(Screen.Library)
+                                        BottomNavItem.SETTINGS -> navController.navigate(Screen.Settings)
+                                    }
+                                }
+                            )
+                        }
                     }
-                    
-                    composable<Screen.Search> {
-                        SearchScreen(
-                            musicViewModel = musicViewModel,
-                            onTrackClick = { track ->
+                ) { paddingValues ->
+                    NavHost(
+                        navController = navController,
+                        startDestination = Screen.Home,
+                        modifier = Modifier.padding(paddingValues)
+                    ) {
+                        composable<Screen.Home> {
+                            HomeScreen(musicViewModel, playerViewModel, { track ->
                                 musicViewModel.addToRecentlyPlayed(track)
                                 playerViewModel.playTrack(track)
-                            },
-                            onAlbumClick = { album ->
+                            }, { album ->
                                 navController.navigate(Screen.AlbumDetail(album.id, album.name))
-                            },
-                            onArtistClick = { artist ->
+                            }, { artist ->
                                 navController.navigate(Screen.ArtistDetail(artist.id, artist.name))
-                            }
-                        )
-                    }
-                    
-                    composable<Screen.Player> {
-                        PlayerScreen(
-                            playerViewModel = playerViewModel,
-                            onShowQueue = { showQueue = true }
-                        )
-                    }
-                    
-                    composable<Screen.Library> {
-                        LibraryScreen(
-                            musicViewModel = musicViewModel,
-                            onTrackClick = { track ->
+                            })
+                        }
+                        
+                        composable<Screen.Search> {
+                            SearchScreen(musicViewModel, { track ->
                                 musicViewModel.addToRecentlyPlayed(track)
                                 playerViewModel.playTrack(track)
-                            },
-                            onPlaylistClick = { playlist ->
+                            }, { album ->
+                                navController.navigate(Screen.AlbumDetail(album.id, album.name))
+                            }, { artist ->
+                                navController.navigate(Screen.ArtistDetail(artist.id, artist.name))
+                            })
+                        }
+                        
+                        composable<Screen.Player> {
+                            PlayerScreen(playerViewModel, { showQueue = true })
+                        }
+                        
+                        composable<Screen.Library> {
+                            LibraryScreen(musicViewModel, { track ->
+                                musicViewModel.addToRecentlyPlayed(track)
+                                playerViewModel.playTrack(track)
+                            }, { playlist ->
                                 navController.navigate(Screen.PlaylistDetail(playlist.id))
-                            }
-                        )
-                    }
-                    
-                    composable<Screen.Settings> {
-                        SettingsScreen(
-                            playerViewModel = playerViewModel,
-                            onThemeToggle = { isDarkTheme = !isDarkTheme },
-                            isDarkTheme = isDarkTheme
-                        )
-                    }
-                    
-                    composable<Screen.AlbumDetail> { backStackEntry ->
-                        val args = backStackEntry.toRoute<Screen.AlbumDetail>()
-                        AlbumDetailScreen(
-                            albumId = args.albumId,
-                            albumName = args.albumName,
-                            musicViewModel = musicViewModel,
-                            playerViewModel = playerViewModel,
-                            onBackClick = { navController.navigateUp() },
-                            onTrackClick = { track ->
+                            })
+                        }
+                        
+                        composable<Screen.Settings> {
+                            SettingsScreen(playerViewModel, { isDarkTheme = !isDarkTheme }, isDarkTheme)
+                        }
+                        
+                        composable<Screen.AlbumDetail> { backStackEntry ->
+                            val args = backStackEntry.toRoute<Screen.AlbumDetail>()
+                            AlbumDetailScreen(args.albumId, args.albumName, musicViewModel, playerViewModel, { navController.navigateUp() }, { track ->
                                 musicViewModel.addToRecentlyPlayed(track)
-                            }
-                        )
-                    }
-                    
-                    composable<Screen.ArtistDetail> { backStackEntry ->
-                        val args = backStackEntry.toRoute<Screen.ArtistDetail>()
-                        ArtistDetailScreen(
-                            artistId = args.artistId,
-                            artistName = args.artistName,
-                            musicViewModel = musicViewModel,
-                            playerViewModel = playerViewModel,
-                            onBackClick = { navController.navigateUp() },
-                            onTrackClick = { track ->
+                            })
+                        }
+                        
+                        composable<Screen.ArtistDetail> { backStackEntry ->
+                            val args = backStackEntry.toRoute<Screen.ArtistDetail>()
+                            ArtistDetailScreen(args.artistId, args.artistName, musicViewModel, playerViewModel, { navController.navigateUp() }, { track ->
                                 musicViewModel.addToRecentlyPlayed(track)
-                            },
-                            onAlbumClick = { album ->
+                            }, { album ->
                                 navController.navigate(Screen.AlbumDetail(album.id, album.name))
-                            }
-                        )
-                    }
-                    
-                    composable<Screen.PlaylistDetail> { backStackEntry ->
-                        val args = backStackEntry.toRoute<Screen.PlaylistDetail>()
-                        PlaylistDetailScreen(
-                            playlistId = args.playlistId,
-                            musicViewModel = musicViewModel,
-                            playerViewModel = playerViewModel,
-                            onBackClick = { navController.navigateUp() },
-                            onTrackClick = { track ->
+                            })
+                        }
+                        
+                        composable<Screen.PlaylistDetail> { backStackEntry ->
+                            val args = backStackEntry.toRoute<Screen.PlaylistDetail>()
+                            PlaylistDetailScreen(args.playlistId, musicViewModel, playerViewModel, { navController.navigateUp() }, { track ->
                                 musicViewModel.addToRecentlyPlayed(track)
-                            }
-                        )
+                            })
+                        }
+                        
+                        // New screens
+                        composable<Screen.Genres> { GenreBrowserScreen({}, Modifier) }
+                        composable<Screen.MoodPlaylists> { MoodPlaylistsScreen({}, Modifier) }
+                        composable<Screen.Radio> { RadioStationsScreen({}, Modifier) }
+                        composable<Screen.Charts> { ChartsScreen(musicViewModel, {}, Modifier) }
+                        composable<Screen.Equalizer> { EqualizerScreen(Modifier) }
+                        composable<Screen.SleepTimer> { SleepTimerScreen(Modifier) }
+                        composable<Screen.Statistics> { StatisticsScreen(Modifier) }
+                        composable<Screen.YearWrapped> { YearWrappedScreen(Modifier) }
+                        composable<Screen.CarMode> { CarModeScreen(playerViewModel, Modifier) }
+                        composable<Screen.Visualizer> {
+                            val playerState by playerViewModel.playerState.collectAsState()
+                            AudioVisualizerScreen(playerState.currentTrack, playerState.isPlaying, Modifier)
+                        }
+                        composable<Screen.Podcasts> { PodcastsScreen({}, Modifier) }
+                        composable<Screen.History> { HistoryScreen(musicViewModel, {}, Modifier) }
+                        composable<Screen.StorageManager> { StorageManagerScreen(Modifier) }
+                        composable<Screen.LikedSongs> {
+                            val likedTracks by musicViewModel.likedTracks.collectAsState()
+                            // Show liked songs list
+                        }
+                        composable<Screen.Lyrics> {
+                            val playerState by playerViewModel.playerState.collectAsState()
+                            LyricsScreen(playerState.currentTrack, playerState.currentPosition, Modifier)
+                        }
                     }
                 }
             }
